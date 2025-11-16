@@ -1,9 +1,13 @@
 use anyhow::Result;
 use serde::{Serialize, Deserialize};
-use ark_serialize::CanonicalSerialize;
+use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
+use std::fs::File;
+use std::io::{Write, Read};
 use ark_ff::PrimeField;
 use ark_ff::BigInteger;
-use crate::zk::{Groth16Proof, Groth16VerifyingKey, Fr};
+
+
+use crate::zk::{Groth16Proof, Groth16VerifyingKey, Groth16ProvingKey, Fr};
 
 #[derive(Serialize, Deserialize)]
 pub struct VkJson {
@@ -48,4 +52,19 @@ pub fn proof_to_json(proof: &Groth16Proof, public: Fr, nullifier: Fr) -> Result<
             hex::encode(nullifier.into_bigint().to_bytes_be()),
         ],
     })
+}
+
+pub fn save_pk(pk: &Groth16ProvingKey, path: &str) -> Result<()> {
+    let mut buf = Vec::new();
+    pk.serialize_compressed(&mut buf)?;
+    let mut f = File::create(path)?;
+    f.write_all(&buf)?;
+    Ok(())
+}
+
+pub fn load_pk(path: &str) -> Result<Groth16ProvingKey> {
+    let mut f = File::open(path)?;
+    let mut buf = Vec::new();
+    f.read_to_end(&mut buf)?;
+    Ok(Groth16ProvingKey::deserialize_compressed(&buf[..])?)
 }

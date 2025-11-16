@@ -4,16 +4,16 @@ mod contract_gen;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use std::fs;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 use owo_colors::OwoColorize;
+use figlet_rs::FIGfont;
 
 use zk::{generate_parameters, generate_proof};
-use serialization::{vk_to_json, proof_to_json};
+use serialization::{vk_to_json, proof_to_json, save_pk, load_pk};
 use contract_gen::generate_contract;
 
 #[derive(Debug, Parser)]
-#[command(name = "kredent", about = "KREDENT: ZK Rosetta Stone", version)]
+#[command(name = "kredent", version)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -30,6 +30,8 @@ enum Commands {
         secret: String,
         #[arg(long)]
         out: PathBuf,
+        #[arg(long, default_value = "pk.bin")]
+        pk: String,
     },
     GenerateContract {
         #[arg(long)]
@@ -38,49 +40,39 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
-    println!("{}", "KREDENT".bright_red().bold());
-    println!("{}", "Rust → Groth16 Proofs → Mina".bright_blue().bold());
-    println!();
+    let font = FIGfont::standard().unwrap();
+    let text = font.convert("KREDENT").unwrap();
+    print!("{}", text.to_string().bright_green());
+    println!("{}", "Rust → Groth16 → Mina → Zcash".bright_blue());
 
     let cli = Cli::parse();
 
     match cli.command {
         Commands::GenerateKeys { out_dir } => {
-            println!("{}", "[*] Generating proving and verifying keys...".yellow());
+            println!("{}", "[*] generating proving/verifying keys...".yellow());
             let (pk, vk) = generate_parameters()?;
-
             let dir = out_dir.unwrap_or_else(|| PathBuf::from("."));
             fs::create_dir_all(&dir)?;
-
+            save_pk(&pk, &dir.join("pk.bin").to_string_lossy())?;
             fs::write(dir.join("vk.json"), serde_json::to_string_pretty(&vk_to_json(&vk)?)?)?;
-
-            println!("{}", "✔ Keys generated".bright_green());
-            println!("Saved to: {:?}", dir);
+            println!("{}", "✔ keys saved".bright_green());
         }
 
-        Commands::Prove { secret, out } => {
-            println!("{}", "[*] Generating proof...".yellow());
-
-            let secret_f = zk::Fr::from(secret.parse::<u64>()?);
-            let (proof, public_hash, nullifier) = generate_proof(&load_pk()?, secret_f)?;
-
-            fs::write(&out, serde_json::to_string_pretty(&proof_to_json(&proof, public_hash, nullifier)?)?)?;
-
-            println!("{}", "✔ Proof generated".bright_green());
-            println!("Saved at: {:?}", out);
+        Commands::Prove { secret, out, pk } => {
+            println!("{}", "[*] generating proof...".yellow());
+            let s = zk::Fr::from(secret.parse::<u64>()?);
+            let pk_loaded = load_pk(&pk)?;
+            let (proof, pubhash, nullifier) = generate_proof(&pk_loaded, s)?;
+            fs::write(&out, serde_json::to_string_pretty(&proof_to_json(&proof, pubhash, nullifier)?)?)?;
+            println!("{}", "✔ proof written".bright_green());
         }
 
         Commands::GenerateContract { out_dir } => {
-            println!("{}", "[*] Generating Mina verifier contract...".yellow());
+            println!("{}", "[*] generating o1js verifier...".yellow());
             generate_contract(&PathBuf::from("vk.json"), &out_dir)?;
             println!("{}", "✔ Verifier.ts created".bright_green());
-            println!("Location: {:?}", out_dir);
         }
     }
 
     Ok(())
-}
-
-fn load_pk() -> Result<zk::Groth16ProvingKey> {
-    anyhow::bail!("TODO: load proving key storage (coming soon)")
 }
