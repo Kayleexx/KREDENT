@@ -1,15 +1,60 @@
+mod zk;
+mod serialization;
+mod contract_gen;
+
 use anyhow::Result;
-use kredent::zk::{generate_parameters, generate_proof, Fr};
-use kredent::serialization::{vk_to_json, proof_to_json};
-use std::fs;
+use clap::Parser;
+use std::path::PathBuf;
+use contract_gen::generate_contract;
+
+#[derive(Debug, Parser)]
+#[command(
+    name = "kredent",
+    version,
+    about = "KREDENT: ZK Rosetta Stone"
+)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Debug, clap::Subcommand)]
+enum Commands {
+    GenerateKeys {},
+    Prove {
+        #[arg(long)]
+        secret: String,
+        #[arg(long)]
+        out: PathBuf,
+    },
+    Verify {
+        #[arg(long)]
+        proof: PathBuf,
+    },
+    GenerateContract {
+        #[arg(long)]
+        out_dir: PathBuf,
+    },
+    Pay {
+        #[arg(long)]
+        to: String,
+        #[arg(long)]
+        memo: String,
+        #[arg(long)]
+        amount: String,
+    },
+}
 
 fn main() -> Result<()> {
-    let (pk, vk) = generate_parameters()?;
-    fs::write("vk.json", serde_json::to_string_pretty(&vk_to_json(&vk)?)?)?;
+    let cli = Cli::parse();
 
-    let secret = Fr::from(42u64);
-    let (proof, public) = generate_proof(&pk, secret)?;
-    fs::write("proof.json", serde_json::to_string_pretty(&proof_to_json(&proof, public)?)?)?;
+    match cli.command {
+        Commands::GenerateContract { out_dir } => {
+            generate_contract(&PathBuf::from("vk.json"), &out_dir)?;
+            println!("Verifier.ts created in {:?}", out_dir);
+        }
+        _ => println!("Command not implemented yet"),
+    }
 
     Ok(())
 }
