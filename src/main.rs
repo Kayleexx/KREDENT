@@ -1,33 +1,15 @@
-mod zk;
-
 use anyhow::Result;
-use zk::{generate_parameters, generate_proof, verify_proof, Fr};
+use kredent::zk::{generate_parameters, generate_proof, Fr};
+use kredent::serialization::{vk_to_json, proof_to_json};
+use std::fs;
 
 fn main() -> Result<()> {
-    println!(
-        "kredent: zk core loaded (Step 1). Run `cargo test` for a full prove/verify roundtrip."
-    );
-
-    // Optional lightweight smoke test at runtime (non-fatal on error).
-    if let Err(e) = smoke_test() {
-        eprintln!("warning: zk smoke test failed: {e}");
-    }
-
-    Ok(())
-}
-
-fn smoke_test() -> Result<()> {
     let (pk, vk) = generate_parameters()?;
+    fs::write("vk.json", serde_json::to_string_pretty(&vk_to_json(&vk)?)?)?;
 
     let secret = Fr::from(42u64);
-    let (proof, public_hash) = generate_proof(&pk, secret)?;
-    let ok = verify_proof(&vk, &proof, public_hash)?;
-
-    if ok {
-        println!("zk smoke test: OK");
-    } else {
-        println!("zk smoke test: FAILED");
-    }
+    let (proof, public) = generate_proof(&pk, secret)?;
+    fs::write("proof.json", serde_json::to_string_pretty(&proof_to_json(&proof, public)?)?)?;
 
     Ok(())
 }

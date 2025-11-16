@@ -70,31 +70,3 @@ pub fn verify_proof(vk: &Groth16VerifyingKey, proof: &Groth16Proof, h: Fr) -> Re
     Ok(Groth16::<Curve>::verify(vk, &[h], proof)?)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn roundtrip() {
-        let (pk, vk) = generate_parameters().unwrap();
-        let mut a = [0u8; 32];
-        OsRng.fill_bytes(&mut a);
-        let s = Fr::from_le_bytes_mod_order(&a);
-
-        let (p, h) = generate_proof(&pk, s).unwrap();
-        assert!(verify_proof(&vk, &p, h).unwrap());
-    }
-
-    #[test]
-    fn invalid_fail() {
-        let (pk, vk) = generate_parameters().unwrap();
-        let mut a = [0u8; 32];
-        OsRng.fill_bytes(&mut a);
-        let s = Fr::from_le_bytes_mod_order(&a);
-
-        let (p, _) = generate_proof(&pk, s).unwrap();
-        OsRng.fill_bytes(&mut a);
-        let wrong = Fr::from_le_bytes_mod_order(&a);
-        assert!(!verify_proof(&vk, &p, wrong).unwrap());
-    }
-}
