@@ -38,11 +38,14 @@ pub fn vk_to_json(vk: &Groth16VerifyingKey) -> Result<VkJson> {
     })
 }
 
-pub fn proof_to_json(proof: &Groth16Proof, public: Fr) -> Result<ProofJson> {
+pub fn proof_to_json(proof: &Groth16Proof, public: Fr, nullifier: Fr) -> Result<ProofJson> {
     Ok(ProofJson {
         a: to_hex(&proof.a)?,
         b: to_hex(&proof.b)?,
         c: to_hex(&proof.c)?,
-        public_inputs: vec![hex::encode(public.into_bigint().to_bytes_be())],
+        public_inputs: vec![
+            hex::encode(public.into_bigint().to_bytes_be()),
+            hex::encode(nullifier.into_bigint().to_bytes_be()),
+        ],
     })
 }

@@ -58,12 +58,19 @@ pub fn generate_parameters() -> Result<(Groth16ProvingKey, Groth16VerifyingKey)>
     Ok((pk, vk))
 }
 
-pub fn generate_proof(pk: &Groth16ProvingKey, secret: Fr) -> Result<(Groth16Proof, Fr)> {
+pub fn generate_proof(pk: &Groth16ProvingKey, secret: Fr) -> Result<(Groth16Proof, Fr, Fr)> {
     let mut rng = OsRng;
-    let h = HashPreimageCircuit::compute_public_hash(secret);
-    let c = HashPreimageCircuit { secret: Some(secret), hash: Some(h) };
-    let proof = Groth16::<Curve>::prove(pk, c, &mut rng)?;
-    Ok((proof, h))
+
+    let public_hash = HashPreimageCircuit::compute_public_hash(secret);
+    let nullifier = public_hash;  // reuse same hash as nullifier
+
+    let circuit = HashPreimageCircuit {
+        secret: Some(secret),
+        hash: Some(public_hash),
+    };
+
+    let proof = Groth16::<Curve>::prove(pk, circuit, &mut rng)?;
+    Ok((proof, public_hash, nullifier))
 }
 
 pub fn verify_proof(vk: &Groth16VerifyingKey, proof: &Groth16Proof, h: Fr) -> Result<bool> {
