@@ -26,6 +26,10 @@ anyhow = "1.0"
 thiserror = "1.0"
 owo-colors = "4.2.3"
 figlet-rs = "0.1.5"
+zcash_primitives = { git = "https://github.com/zcash/librustzcash.git", package = "zcash_primitives" }
+zcash_address = "0.4"
+blake2b_simd = "1.0"
+
 
 
 [profile.release]

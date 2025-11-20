@@ -1,6 +1,9 @@
 mod zk;
 mod serialization;
 mod contract_gen;
+mod pay;
+use pay::*;
+
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -37,6 +40,14 @@ enum Commands {
         #[arg(long)]
         out_dir: PathBuf,
     },
+    Pay {
+        #[arg(long)]
+        to: String,
+        #[arg(long)]
+        amount: u64,
+        #[arg(long)]
+        memo: String,
+    },
 }
 
 fn main() -> Result<()> {
@@ -72,6 +83,11 @@ fn main() -> Result<()> {
             generate_contract(&PathBuf::from("vk.json"), &out_dir)?;
             println!("{}", "✔ Verifier.ts created".bright_green());
         }
+        Commands::Pay { to, amount, memo } => {
+        println!("{}", "[*] building shielded transaction...".yellow());
+        send_shielded(PaymentRequest { to, amount, memo })?;
+        println!("{}", "✔ offline Zcash tx created".bright_green());
+    }
     }
 
     Ok(())
