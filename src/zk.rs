@@ -1,14 +1,13 @@
 use anyhow::Result;
 use ark_bn254::Bn254;
 use ark_ec::pairing::Pairing;
-use ark_ff::{Field, PrimeField};
+use ark_ff::Field;
 use ark_groth16::{Groth16, Proof, ProvingKey, VerifyingKey};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
 use ark_r1cs_std::{alloc::AllocVar, eq::EqGadget, fields::fp::FpVar};
-use ark_r1cs_std::fields::FieldVar;
+use ark_r1cs_std::fields::FieldVar; // needed for square() & constant()
 use ark_snark::{CircuitSpecificSetupSNARK, SNARK};
 use ark_std::rand::rngs::OsRng;
-use ark_std::rand::RngCore;
 
 pub type Curve = Bn254;
 pub type Fr = <Curve as Pairing>::ScalarField;
@@ -27,9 +26,16 @@ impl HashPreimageCircuit {
         let r = |s: Fr, c: u64| s.square().square() * s + Fr::from(c);
         r(r(r(x, 5), 7), 11)
     }
+
     pub fn compute_public_hash(secret: Fr) -> Fr {
         Self::hash_native(secret)
     }
+}
+
+pub fn compute_nullifier(secret: Fr) -> Fr {
+    let mut x = secret + Fr::from(123456u64);
+    x = x.square();
+    x
 }
 
 impl ConstraintSynthesizer<Fr> for HashPreimageCircuit {
@@ -45,7 +51,6 @@ impl ConstraintSynthesizer<Fr> for HashPreimageCircuit {
         st = round(st, 5)?;
         st = round(st, 7)?;
         st = round(st, 11)?;
-
         st.enforce_equal(&h)?;
         Ok(())
     }
@@ -53,8 +58,8 @@ impl ConstraintSynthesizer<Fr> for HashPreimageCircuit {
 
 pub fn generate_parameters() -> Result<(Groth16ProvingKey, Groth16VerifyingKey)> {
     let mut rng = OsRng;
-    let c = HashPreimageCircuit { secret: None, hash: None };
-    let (pk, vk) = Groth16::<Curve>::setup(c, &mut rng)?;
+    let circuit = HashPreimageCircuit { secret: None, hash: None };
+    let (pk, vk) = Groth16::<Curve>::circuit_specific_setup(circuit, &mut rng)?;
     Ok((pk, vk))
 }
 
@@ -62,7 +67,7 @@ pub fn generate_proof(pk: &Groth16ProvingKey, secret: Fr) -> Result<(Groth16Proo
     let mut rng = OsRng;
 
     let public_hash = HashPreimageCircuit::compute_public_hash(secret);
-    let nullifier = public_hash;  // reuse same hash as nullifier
+    let nullifier = compute_nullifier(secret);
 
     let circuit = HashPreimageCircuit {
         secret: Some(secret),
@@ -73,7 +78,6 @@ pub fn generate_proof(pk: &Groth16ProvingKey, secret: Fr) -> Result<(Groth16Proo
     Ok((proof, public_hash, nullifier))
 }
 
-pub fn verify_proof(vk: &Groth16VerifyingKey, proof: &Groth16Proof, h: Fr) -> Result<bool> {
-    Ok(Groth16::<Curve>::verify(vk, &[h], proof)?)
+pub fn verify_proof(vk: &Groth16VerifyingKey, proof: &Groth16Proof, public_hash: Fr, nullifier: Fr) -> Result<bool> {
+    Ok(Groth16::<Curve>::verify(vk, &[public_hash, nullifier], proof)?)
 }
-
