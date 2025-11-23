@@ -23,7 +23,6 @@ It provides:
 * **Groth16 zkSNARK proof generation**
 * **Proof & key export for Mina zkApps**
 * **Shielded Zcash offline transactions**
-* **CLI for real-world private credential verification**
 
 No accounts. No trust assumptions. No data exposed.
 
