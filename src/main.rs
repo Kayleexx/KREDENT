@@ -16,7 +16,14 @@ use crate::contract_gen::generate_contract;
 use crate::pay::{send_shielded, PaymentRequest};
 
 #[derive(Debug, Parser)]
-#[command(name = "kredent", version)]
+#[command(
+    name = "kredent",
+    version,
+    about = "Zero-Knowledge Credential & Privacy Tool – Rust → Groth16 → Mina → Zcash",
+    long_about = "KREDENT allows users to prove attributes privately using zk-SNARKs (Groth16), generate proof artifacts, 
+verify on-chain via Mina zkApps, and create shielded Zcash transactions — without revealing secrets."
+)]
+
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -46,6 +53,15 @@ enum Commands {
         #[arg(long)]
         memo: String,
     },
+    VerifyOnchain {
+    #[arg(long)]
+    proof: PathBuf,
+    #[arg(long)]
+    contract: String,
+    #[arg(long)]
+    key: String,
+},
+
 }
 
 fn main() -> Result<()> {
@@ -93,6 +109,18 @@ fn main() -> Result<()> {
             send_shielded(PaymentRequest { to, amount, memo })?;
             println!("{}", "✔ offline Zcash tx created".bright_green());
         }
+
+        Commands::VerifyOnchain { proof, contract, key } => {
+            println!("{}", "[*] Sending on-chain verification...".yellow());
+            std::process::Command::new("node").arg("contract/call.js")
+            .arg(&proof)
+            .arg(&contract)
+            .arg(&key)
+            .status()
+            .expect("failed to execute node");
+        println!("{}", "✔ Verification submitted".bright_green());
+}
+
     }
 
     Ok(())

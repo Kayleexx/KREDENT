@@ -5,8 +5,8 @@ use ark_ff::Field;
 use ark_groth16::{Groth16, Proof, ProvingKey, VerifyingKey};
 use ark_relations::r1cs::{ConstraintSynthesizer, ConstraintSystemRef, SynthesisError};
 use ark_r1cs_std::{alloc::AllocVar, eq::EqGadget, fields::fp::FpVar};
-use ark_r1cs_std::fields::FieldVar; // needed for square() & constant()
-use ark_snark::{CircuitSpecificSetupSNARK, SNARK};
+use ark_r1cs_std::fields::FieldVar; 
+use ark_snark::SNARK;
 use ark_std::rand::rngs::OsRng;
 
 pub type Curve = Bn254;
@@ -77,6 +77,7 @@ pub fn generate_proof(pk: &Groth16ProvingKey, secret: Fr) -> Result<(Groth16Proo
     let proof = Groth16::<Curve>::prove(pk, circuit, &mut rng)?;
     Ok((proof, public_hash, nullifier))
 }
+
 
 pub fn verify_proof(vk: &Groth16VerifyingKey, proof: &Groth16Proof, public_hash: Fr, nullifier: Fr) -> Result<bool> {
     Ok(Groth16::<Curve>::verify(vk, &[public_hash, nullifier], proof)?)
