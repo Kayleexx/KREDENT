@@ -156,10 +156,3 @@ kredent/
 | Payment system     | Zcash shielded builder |
 | Language           | Rust 2024 Edition      |
 
-
----
-
-## License
-
-MIT — open & free forever.
-
